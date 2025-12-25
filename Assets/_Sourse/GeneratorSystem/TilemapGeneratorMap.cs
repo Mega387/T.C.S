@@ -8,13 +8,24 @@ public class TilemapGeneratorMap : MonoBehaviour
 {
     [Header("сам тайл мап")]
     [SerializeField] private Tilemap groundTilemap;
-    [SerializeField] private Tilemap BuildMap;
+    [SerializeField] private Tilemap groundTwoMap;
+    [SerializeField] private Tilemap BuildPlayer;
+
+    [Header("тайлы построек игрока")]
+    [SerializeField] private TileBase king;
+    [SerializeField] private TileBase house;
+    [SerializeField] private TileBase ferma;
 
     [Header("тайлы обьектов")]
     [SerializeField] private TileBase groundTile;
     [SerializeField] private TileBase waterTile;
-    [SerializeField] private TileBase stoneTile;
-
+    [Header("Горы")]
+    [SerializeField] private TileBase stoneTile1;
+    [SerializeField] private TileBase stoneTile2;
+    [SerializeField] private TileBase stoneTile3;
+    [SerializeField] private TileBase stoneTile4;
+    [SerializeField] private TileBase stoneTile5;
+    [Header("Деревья")]
     [SerializeField] private TileBase treeN1;
     [SerializeField] private TileBase treeN2;
 
@@ -28,8 +39,14 @@ public class TilemapGeneratorMap : MonoBehaviour
     [SerializeField] private TileBase waterGround4;
 
     [Header("Размер карты")]
-    [SerializeField] private int cordX = 30;
-    [SerializeField] private int cordY = 50;
+     private int cordX = 100;
+     private int cordY = 80;
+
+
+
+    private Vector3Int kingPosition;
+    [SerializeField] private GameObject spawnEffectPrefab;
+    private Dictionary<Vector3Int, GameObject> activeEffects = new Dictionary<Vector3Int, GameObject>();
 
     void Start()
     {
@@ -40,6 +57,8 @@ public class TilemapGeneratorMap : MonoBehaviour
         FixMountaints();
         roundOffWater();
         generatorTree();
+        country();
+
     }
     static int Randomm(int ran, int nar)
     {
@@ -47,6 +66,69 @@ public class TilemapGeneratorMap : MonoBehaviour
         return random;
     }
 
+
+    void country()
+    {
+        bool isSpawned = false;
+        int attempts = 0;
+        int maxAttempts = 100;
+
+        while (!isSpawned && attempts < maxAttempts)
+        {
+            attempts++;
+
+            int x = Random.Range(1, cordX);
+            int y = Random.Range(1, cordY);
+
+            Vector3Int pos1 = new Vector3Int(x, y, 0);
+            Vector3Int pos2 = new Vector3Int(x, y + 1, 0);
+            Vector3Int pos3 = new Vector3Int(x + 1, y + 1, 0);
+
+            bool canBuild =
+                groundTilemap.GetTile(pos1) == groundTile && groundTwoMap.GetTile(pos1) == null &&
+                groundTilemap.GetTile(pos2) == groundTile && groundTwoMap.GetTile(pos2) == null &&
+                groundTilemap.GetTile(pos3) == groundTile && groundTwoMap.GetTile(pos3) == null &&
+                BuildPlayer.GetTile(pos1) == null &&
+                BuildPlayer.GetTile(pos2) == null &&
+                BuildPlayer.GetTile(pos3) == null;
+
+            if (canBuild)
+            {
+                BuildPlayer.SetTile(pos1, king);
+                BuildPlayer.SetTile(pos2, house);
+                BuildPlayer.SetTile(pos3, ferma);
+
+                kingPosition = pos1;
+
+                Arrou arrou = FindObjectOfType<Arrou>();
+                if (arrou != null)
+                {
+                    arrou.SetTarget(BuildPlayer, kingPosition);
+                }
+
+                isSpawned = true;
+            }
+        }
+    }
+    void ShowSpawnEffect(Vector3Int tilePosition)
+    {
+        if (spawnEffectPrefab != null)
+        {
+            Vector3 worldPos = BuildPlayer.CellToWorld(tilePosition) + new Vector3(0.5f, 0.5f, 0);
+            GameObject effect = Instantiate(spawnEffectPrefab, worldPos, Quaternion.identity);
+            activeEffects[tilePosition] = effect;
+        }
+    }
+    IEnumerator HideSpawnEffects()
+    {
+        yield return new WaitForSeconds(8f);
+        foreach (var effect in activeEffects.Values)
+        {
+            if (effect != null)
+                Destroy(effect);
+        }
+        activeEffects.Clear();
+    }
     void generatorTree()
     {
         for (int i = 0; i <= cordX; i++) //право лево
@@ -59,11 +141,11 @@ public class TilemapGeneratorMap : MonoBehaviour
                     int typeTree = Randomm(1, 3);
                     if (typeTree == 1)
                     {
-                        BuildMap.SetTile(new Vector3Int(i, j, 0), treeN1);
+                        groundTwoMap.SetTile(new Vector3Int(i, j, 0), treeN1);
                     }
                     else
                     {
-                        BuildMap.SetTile(new Vector3Int(i, j, 0), treeN2);
+                        groundTwoMap.SetTile(new Vector3Int(i, j, 0), treeN2);
                     }
                 }
             }
@@ -143,15 +225,16 @@ public class TilemapGeneratorMap : MonoBehaviour
     }
     void Mountains()
     {
-        for (int i = 0; i <= 10; i++)
+        for (int i = 0; i <= 14; i++)
         {
             int x = Randomm(1, cordX);
             int y = Randomm(1, cordY);
-            groundTilemap.SetTile(new Vector3Int(x, y, 0), stoneTile);
+            groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile1);
             int leghtstone = Randomm(7, 17);
+            
             for (int j = 0; j <= leghtstone; j++)
             {
-
+                int randomtile = Randomm(1, 6);
                 x += Randomm(-1, 2);
                 y += Randomm(-1, 2);
 
@@ -164,10 +247,51 @@ public class TilemapGeneratorMap : MonoBehaviour
                 {
                     continue;
                 }
-                groundTilemap.SetTile(new Vector3Int(x, y, 0), stoneTile);
+                if (randomtile == 1)
+                {
+                    groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile1);
+                }
+                if (randomtile == 2)
+                {
+                    groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile2);
+                }
+                if (randomtile == 3)
+                {
+                    groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile3);
+                }
+                if (randomtile == 4)
+                {
+                    groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile4);
+
+                }
+                if (randomtile == 5)
+                {
+                    groundTwoMap.SetTile(new Vector3Int(x, y, 0), stoneTile5);
+                }
                 if (x > 1 && x < cordX && y > 1 && y < cordY)
                 {
-                    groundTilemap.SetTile(new Vector3Int(x + 1, y + 1, 0), stoneTile);
+                    if (randomtile == 1)
+                    {
+                        groundTwoMap.SetTile(new Vector3Int(x+1, y + 1, 0), stoneTile1);
+                    }
+                    if (randomtile == 2)
+                    {
+                        groundTwoMap.SetTile(new Vector3Int(x + 1, y + 1, 0), stoneTile2);
+                    }
+                    if (randomtile == 3)
+                    {
+                        groundTwoMap.SetTile(new Vector3Int(x + 1, y + 1, 0), stoneTile3);
+                    }
+                    if (randomtile == 4)
+                    {
+                        groundTwoMap.SetTile(new Vector3Int(x + 1, y + 1, 0), stoneTile4);
+
+                    }
+                    if (randomtile == 5)
+                    {
+                        groundTwoMap.SetTile(new Vector3Int(x + 1, y + 1, 0), stoneTile5);
+                    }
+
 
                 }
             }
@@ -181,15 +305,44 @@ public class TilemapGeneratorMap : MonoBehaviour
             {
                 if (groundTilemap.GetTile(new Vector3Int(i, j, 0)) == groundTile)
                 {
-                    if (groundTilemap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile)
+                    if (groundTwoMap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile1 || groundTwoMap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile2 ||
+                        groundTwoMap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile3 || groundTwoMap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile3 ||
+                        groundTwoMap.GetTile(new Vector3Int(i, j + 1, 0)) == stoneTile5)
                     {
-                        if (groundTilemap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile)
+                        if (groundTwoMap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile1 || groundTwoMap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile2 ||
+                        groundTwoMap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile3 || groundTwoMap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile3 ||
+                        groundTwoMap.GetTile(new Vector3Int(i, j - 1, 0)) == stoneTile5)
                         {
-                            if (groundTilemap.GetTile(new Vector3Int(i + 1, j, 0)) == stoneTile)
+                            if (groundTwoMap.GetTile(new Vector3Int(i + 1, j, 0)) == stoneTile1 || groundTwoMap.GetTile(new Vector3Int(i + 1, j, 0)) == stoneTile2 ||
+                        groundTwoMap.GetTile(new Vector3Int(i + 1, j , 0)) == stoneTile3 || groundTwoMap.GetTile(new Vector3Int(i + 1, j , 0)) == stoneTile3 ||
+                        groundTwoMap.GetTile(new Vector3Int(i + 1, j, 0)) == stoneTile5)
                             {
-                                if (groundTilemap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile)
+                                if (groundTwoMap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile1 || groundTwoMap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile2 ||
+                        groundTwoMap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile3 || groundTwoMap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile3 ||
+                        groundTwoMap.GetTile(new Vector3Int(i - 1, j, 0)) == stoneTile5)
                                 {
-                                    groundTilemap.SetTile(new Vector3Int(i, j, 0), stoneTile);
+                                    int randomtile = Randomm(1, 6);
+                                    if (randomtile == 1)
+                                    {
+                                        groundTwoMap.SetTile(new Vector3Int(i , j , 0), stoneTile1);
+                                    }
+                                    if (randomtile == 2)
+                                    {
+                                        groundTwoMap.SetTile(new Vector3Int(i , j , 0), stoneTile2);
+                                    }
+                                    if (randomtile == 3)
+                                    {
+                                        groundTwoMap.SetTile(new Vector3Int(i , j , 0), stoneTile3);
+                                    }
+                                    if (randomtile == 4)
+                                    {
+                                        groundTwoMap.SetTile(new Vector3Int(i , j , 0), stoneTile4);
+
+                                    }
+                                    if (randomtile == 5)
+                                    {
+                                        groundTwoMap.SetTile(new Vector3Int(i, j , 0), stoneTile5);
+                                    }
                                 }
                             }
                         }
