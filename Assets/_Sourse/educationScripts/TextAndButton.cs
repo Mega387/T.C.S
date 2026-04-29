@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class TextAndButton : MonoBehaviour
 {
@@ -36,6 +37,7 @@ public class TextAndButton : MonoBehaviour
     [SerializeField] GameObject BuildingCaveArea;
     [SerializeField] GameObject TextFinish;
 
+
     private int count = 0;
     private int countAfter = 0;
     private int countAfterAfter = 0;
@@ -55,6 +57,14 @@ public class TextAndButton : MonoBehaviour
     }
     void Update()
     {
+        Debug.Log($"count {count}");
+        Debug.Log($"countAfter {countAfter}");
+        Debug.Log($"countAfterAfter {countAfterAfter}");
+        Debug.Log($"countAfterAfterAfter {countAfterAfterAfter}");
+        Debug.Log($"countAfterAfterAfterFinal {countAfterAfterAfterFinal}");
+
+
+
         if (Input.GetKeyDown(KeyCode.Return) && isFinish == false && PressButton == false || Input.GetKeyDown(KeyCode.KeypadEnter) && isFinish == false && PressButton == false)
         {
             count++;
@@ -86,7 +96,7 @@ public class TextAndButton : MonoBehaviour
         {
             countAfterAfterAfterFinal++;
             Debug.Log("3Переход выполнен");
-            UpdateUIafterInfoBuildPlants();
+            UpdateUIafterInfoBuildCave();
 
         }
     }
@@ -114,9 +124,18 @@ public class TextAndButton : MonoBehaviour
     {
         BuildTextWoodenArea.SetActive(true);
     }
+    public void PressMenuWoodenEnter()
+    {
+        ResetSetActive();
+        countAfter++;
+    }
+    public void PressMenuCaveEnter()
+    {
+        ResetSetActive();
+    }
     void UpdateUIafterInfoBuildCave()
     {
-        // 4 цикл после нажатия по кнопке строить феомы
+        // 5 цикл после нажатия по кнопке строить феомы
         ResetSetActive();
         switch (countAfterAfterAfterFinal)
         {
@@ -128,7 +147,7 @@ public class TextAndButton : MonoBehaviour
                 TextFinish.SetActive(true);
                 break;
             case 2:
-                //выход из сцены
+                SceneManager.LoadScene("Menu");
                 break;
         }
 
@@ -189,7 +208,7 @@ public class TextAndButton : MonoBehaviour
                 BuildTextWoodenEnter.SetActive(true);
                 UImenuBuildReal.SetActive(true);
                 UImenuBuilddontReal.SetActive(false);
-                isfinishEnUIbuildmenu = true; //ffffffffffffffffffffff
+                isfinishEnUIbuildmenu = true;
                 break;
         }
     }

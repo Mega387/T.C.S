@@ -5,17 +5,22 @@ using UnityEngine.Tilemaps;
 
 public class Arrou : MonoBehaviour
 {
-    public Tilemap targetTilemap;
-    public Vector3Int targetTilePosition;
-    public Camera cam;
-    public float screenBorder = 0.9f;
+    [SerializeField] private Tilemap targetTilemap;
+    [SerializeField] private Vector3Int targetTilePosition;
+    [SerializeField] private Camera cam;
+    [SerializeField] private float screenBorder = 0.9f;
+
+    [Header("размер")]
+    public float fixedSize = 1.0f;
 
     private SpriteRenderer spriteRenderer;
+    private float originalOrthographicSize;
 
     void Start()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         cam = Camera.main;
+        originalOrthographicSize = cam.orthographicSize;
     }
 
     void Update()
@@ -32,6 +37,8 @@ public class Arrou : MonoBehaviour
         if (!onScreen)
         {
             UpdateArrowPosition(viewportPos);
+            float scale = fixedSize * (cam.orthographicSize / originalOrthographicSize);
+            transform.localScale = new Vector3(scale, scale, 1f);
         }
     }
 

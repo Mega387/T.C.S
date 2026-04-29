@@ -12,11 +12,11 @@ public class ResoursUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI ironIngotText;
     [SerializeField] private TextMeshProUGUI ironOreText;
     public static float population = 20;
-    public static float wooden = 200;
-    public static float eat = 200;
-    public static float stone = 0;
-    public static float ironIngot = 0;
-    public static float ironOre = 0;
+    public static float wooden = 999;
+    public static float eat = 999;
+    public static float stone = 999;
+    public static float ironIngot = 999;
+    public static float ironOre = 999;
     void Start()
     {
         

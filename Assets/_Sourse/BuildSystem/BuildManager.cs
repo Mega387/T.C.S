@@ -49,22 +49,22 @@ public class BuildManager : MonoBehaviour
     }
 
     [Header("Tilemaps")]
-    public Tilemap groundTilemap;
-    public Tilemap groundTwoTilemap;
-    public Tilemap buildTilemap;
-    public Tilemap buildEnemyTilemap;
-    public Tilemap previewTilemap;
+    [SerializeField] private Tilemap groundTilemap;
+    [SerializeField] private Tilemap groundTwoTilemap;
+    [SerializeField] private Tilemap buildTilemap;
+    [SerializeField] private Tilemap buildEnemyTilemap;
+    [SerializeField] private Tilemap previewTilemap;
 
     [Header("UI Elements")]
-    public GameObject buildMenu;
-    public GameObject openMenuButton;
+    [SerializeField] private GameObject buildMenu;
+    [SerializeField] private GameObject openMenuButton;
 
     [Header("Buildings List")]
-    public List<Building> buildings = new List<Building>();
+    [SerializeField] private List<Building> buildings = new List<Building>();
 
     [Header("Preview Tiles")]
-    public Tile validTile;
-    public Tile invalidTile;
+    [SerializeField] private Tile validTile;
+    [SerializeField] private Tile invalidTile;
 
     private Building selectedBuilding;
     private Vector3Int currentCellPos;
@@ -291,6 +291,7 @@ public class BuildManager : MonoBehaviour
             else
             {
                 yield break;
+
             }
         }
 
@@ -298,7 +299,14 @@ public class BuildManager : MonoBehaviour
 
         if (buildTilemap != null && buildingData != null && buildingData.buildingTile != null)
         {
+
             buildTilemap.SetTile(position, buildingData.buildingTile);
+            FixBuildTile fixs = FindObjectOfType<FixBuildTile>();
+
+            if (fixs != null)
+            {
+                fixs.shiftCount();
+            }
         }
 
         if (activeConstructions.ContainsKey(position))

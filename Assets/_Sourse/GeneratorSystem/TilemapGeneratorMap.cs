@@ -77,8 +77,8 @@ public class TilemapGeneratorMap : MonoBehaviour
         {
             attempts++;
 
-            int x = Random.Range(1, cordX);
-            int y = Random.Range(1, cordY);
+            int x = Random.Range(15, cordX-15);
+            int y = Random.Range(15, cordY-15);
 
             Vector3Int pos1 = new Vector3Int(x, y, 0);
             Vector3Int pos2 = new Vector3Int(x, y + 1, 0);
@@ -118,16 +118,6 @@ public class TilemapGeneratorMap : MonoBehaviour
             GameObject effect = Instantiate(spawnEffectPrefab, worldPos, Quaternion.identity);
             activeEffects[tilePosition] = effect;
         }
-    }
-    IEnumerator HideSpawnEffects()
-    {
-        yield return new WaitForSeconds(8f);
-        foreach (var effect in activeEffects.Values)
-        {
-            if (effect != null)
-                Destroy(effect);
-        }
-        activeEffects.Clear();
     }
     void generatorTree()
     {
@@ -378,7 +368,7 @@ public class TilemapGeneratorMap : MonoBehaviour
     }
     void Water()
     {
-        for (int i = 0; i <= 10; i++)
+        for (int i = 0; i <= 15; i++)
         {
             int x = Randomm(1, cordX);
             int y = Randomm(1, cordY);

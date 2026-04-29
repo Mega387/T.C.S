@@ -54,7 +54,7 @@ public class ResourseManager : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(60f);
+            yield return new WaitForSeconds(40f);
 
             CountTiles();
 

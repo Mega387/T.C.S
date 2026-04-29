@@ -6,18 +6,18 @@ using UnityEngine.Tilemaps;
 public class CameraMove : MonoBehaviour
 {
     [Header("Настройки перемещения камеры")]
-    public float panSpeed = 20f;
-    public float keyboardPanSpeed = 10f;
+    [SerializeField] private float panSpeed = 20f;
+    [SerializeField] private float keyboardPanSpeed = 10f;
 
     [Header("Настройки зума")]
-    public float zoomSpeed = 20f;
-    public float minZoom = 2f;
-    public float maxZoom = 10f;
+    [SerializeField] private float zoomSpeed = 20f;
+    [SerializeField] private float minZoom = 2f;
+    [SerializeField] private float maxZoom = 10f;
 
     [Header("Автоматические границы")]
-    public Tilemap targetTilemap;
-    public bool autoDetectBounds = true;
-    public float boundsUpdateDelay = 1f;
+    [SerializeField] private Tilemap targetTilemap;
+    [SerializeField] private bool autoDetectBounds = true;
+    [SerializeField] private float boundsUpdateDelay = 1f;
 
     private Camera cam;
     private Vector3 dragOrigin;
@@ -144,14 +144,12 @@ public class CameraMove : MonoBehaviour
         if (mapBounds.size.x < 10f || mapBounds.size.y < 10f)
         {
             mapBounds = new Bounds(Vector3.zero, new Vector3(50, 50, 0));
-            Debug.LogWarning("Границы тайлмапа слишком маленькие, установлены значения по умолчанию");
         }
 
         Vector3 center = mapBounds.center;
         center.z = transform.position.z;
         transform.position = center;
-
-        Debug.Log($"Границы карты установлены: {mapBounds.min} - {mapBounds.max}");
+        //границы
     }
 
     public void MoveToMapCenter()
