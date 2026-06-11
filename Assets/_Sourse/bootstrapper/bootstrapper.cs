@@ -8,8 +8,8 @@ public class bootstrapper : MonoBehaviour
     {
 
         ResoursUI.population = 20;
-        ResoursUI.wooden = 150;
-        ResoursUI.eat = 150;
+        ResoursUI.wooden = 550;//150
+        ResoursUI.eat = 550;
         ResoursUI.stone = 0;
         ResoursUI.ironIngot = 0;
         ResoursUI.ironOre = 0;

@@ -127,19 +127,19 @@ public class ResourseManager : MonoBehaviour
     void UpdateIncomeTexts()
     {
         if (foodIncomeText != null)
-            foodIncomeText.text = $"Еда: {currentFoodIncome:F1}\n/40сек";
+            foodIncomeText.text = $"Еда: {currentFoodIncome}\n/40сек";
 
         if (woodIncomeText != null)
-            woodIncomeText.text = $"Древесина: {currentWoodIncome:F1}\n/40сек";
+            woodIncomeText.text = $"Древесина: {currentWoodIncome}\n/40сек";
 
         if (stoneIncomeText != null)
-            stoneIncomeText.text = $"Камень: {currentStoneIncome:F1}\n/40сек";
+            stoneIncomeText.text = $"Камень: {currentStoneIncome}\n/40сек";
 
         if (ironOreIncomeText != null)
-            ironOreIncomeText.text = $"Руда: {currentIronOreIncome:F1}\n/40сек";
+            ironOreIncomeText.text = $"Руда: {currentIronOreIncome}\n/40сек";
 
         if (ironIngotIncomeText != null)
-            ironIngotIncomeText.text = $"Слитки: {currentIronIngotIncome:F1}\n/40сек";
+            ironIngotIncomeText.text = $"Слитки: {currentIronIngotIncome}\n/40сек";
     }
 
     void UpdateSlider()
