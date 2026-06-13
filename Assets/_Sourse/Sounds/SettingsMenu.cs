@@ -1,6 +1,7 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 
 public class SettingsMenu : MonoBehaviour
 {
@@ -11,6 +12,10 @@ public class SettingsMenu : MonoBehaviour
 
     private Resolution[] resolutions;
     private bool isPaused = false;
+
+    private float lastEscapeTime = -999f;
+    private bool waitingForDoublePress = false;
+    private float doublePressDelay = 2f;
 
     void Start()
     {
@@ -68,11 +73,39 @@ public class SettingsMenu : MonoBehaviour
             if (isPaused)
             {
                 ResumeGame();
+                waitingForDoublePress = false;
             }
             else
             {
-                PauseGame();
+                float currentTime = Time.unscaledTime;
+
+                if (currentTime - lastEscapeTime <= doublePressDelay)
+                {
+                    PauseGame();
+                    waitingForDoublePress = false;
+                }
+                else
+                {
+                    lastEscapeTime = currentTime;
+                    waitingForDoublePress = true;
+                    StartCoroutine(ResetDoublePress());
+                }
             }
+        }
+    }
+
+    private IEnumerator ResetDoublePress()
+    {
+        yield return new WaitForSecondsRealtime(doublePressDelay);
+        waitingForDoublePress = false;
+    }
+
+    public void OpenMenu()
+    {
+        if (!isPaused)
+        {
+            PauseGame();
+            waitingForDoublePress = false;
         }
     }
 

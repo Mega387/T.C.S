@@ -4,11 +4,11 @@ using System.Collections.Generic;
 
 public class DemolitionSystem : MonoBehaviour
 {
-    [Header("тайлмапы")]
+    [Header("Тайлмапы")]
     [SerializeField] private Tilemap buildingsTilemap;
     [SerializeField] private Tilemap highlightTilemap;
 
-    [Header("тайлы подсветки")]
+    [Header("Тайлы подсветки")]
     [SerializeField] private TileBase mainHighlightTile;
     [SerializeField] private TileBase chainHighlightTile;
 
@@ -20,14 +20,9 @@ public class DemolitionSystem : MonoBehaviour
     [System.Serializable]
     public class BuildingRule
     {
-        [Header("Основные настройки")]
         public string ruleName;
         public TileBase targetBuilding;
-
-        [Header("Что уничтожается")]
         public List<DestroyTarget> destroyWithIt;
-
-        [Header("Глобальное условие")]
         public bool useGlobalCondition = false;
         public GlobalCondition globalCondition;
     }
@@ -35,17 +30,12 @@ public class DemolitionSystem : MonoBehaviour
     [System.Serializable]
     public class DestroyTarget
     {
-        [Header("Цель")]
         public string targetName;
         public TileBase targetTile1;
         public TileBase targetTile2;
         public TileBase targetTile3;
         public TileBase targetTile4;
-
-        [Header("Радиус поиска")]
         public int searchRadius = 0;
-
-        [Header("Условие")]
         public bool requireCondition = false;
         public ConditionType conditionType;
         public TileBase conditionCheckBuilding1;
@@ -124,10 +114,12 @@ public class DemolitionSystem : MonoBehaviour
     private List<Vector3Int> cellsToDestroy = new List<Vector3Int>();
     private List<Vector3Int> currentHighlightedCells = new List<Vector3Int>();
     private Camera mainCamera;
+    private BuildingFireManager fireManager;
 
     void Start()
     {
         mainCamera = Camera.main;
+        fireManager = FindObjectOfType<BuildingFireManager>();
     }
 
     void Update()
@@ -389,11 +381,42 @@ public class DemolitionSystem : MonoBehaviour
         {
             buildingsTilemap.SetTile(cell, null);
             highlightTilemap.SetTile(cell, null);
+
+            if (fireManager != null)
+                fireManager.ClearFire(cell);
         }
 
         ClearHighlights();
         currentRule = null;
         cellsToDestroy.Clear();
+    }
+
+    public void DestroySingleBuilding(Vector3Int cell)
+    {
+        TileBase tile = buildingsTilemap.GetTile(cell);
+        if (tile == null) return;
+
+        BuildingRule rule = GetRuleForTile(tile);
+
+        if (rule != null && rule.destroyWithIt.Count > 0)
+        {
+            HashSet<Vector3Int> allCells = new HashSet<Vector3Int>();
+            allCells.Add(cell);
+            CollectAllBuildingsToDestroy(cell, rule, allCells, 0);
+
+            foreach (var c in allCells)
+            {
+                buildingsTilemap.SetTile(c, null);
+                if (fireManager != null)
+                    fireManager.ClearFire(c);
+            }
+        }
+        else
+        {
+            buildingsTilemap.SetTile(cell, null);
+            if (fireManager != null)
+                fireManager.ClearFire(cell);
+        }
     }
 
     public void EnableDemolishMode()

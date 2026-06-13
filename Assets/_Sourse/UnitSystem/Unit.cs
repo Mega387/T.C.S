@@ -1,21 +1,23 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
+using UnityEngine.Tilemaps;
 using UnityEngine.UI;
-using System.Collections;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class Unit : MonoBehaviour
 {
-    [Header("Основные характеристики")]
     [SerializeField] private float maxHealth = 100f;
     private float currentHealth;
     [SerializeField] private string unitTag = "UnitPlayer";
 
-    [Header("Атака")]
+    [Header("Атака по врагам")]
     [SerializeField] private float damage = 10f;
-    [SerializeField] private float attackRate = 1f;
+    [SerializeField] private float attackCooldown = 6f;
     [SerializeField] private float attackRange = 1.5f;
+
+    [Header("Анимация атаки")]
     [SerializeField] private GameObject[] attackAnimationObjects;
-    [SerializeField] private float animationFrameDelay = 0.15f;
+    [SerializeField] private float animationFrameDelay = 0.1f;
 
     [Header("Регенерация")]
     [SerializeField] private float regenDelay = 20f;
@@ -24,30 +26,52 @@ public class Unit : MonoBehaviour
 
     [Header("Движение")]
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float escapeForce = 3f;
+    [SerializeField] private float escapeCheckInterval = 0.3f;
+    [SerializeField] private float escapeDuration = 0.2f;
 
-    [Header("Визуал")]
+    [Header("Взуал")]
     [SerializeField] private Color selectedColor = Color.green;
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Slider healthBar;
 
+    [Header("Разрушение")]
+    [SerializeField] private float buildingDestroyRange = 1.2f;
+    [SerializeField] private float buildingDestroyDelay = 2f;
+    [SerializeField] private int hitsToDestroy = 5;
+
     [HideInInspector] public bool isSelected = false;
 
-    private Rigidbody2D rb;
+    public Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
     private Vector2 targetPosition;
     private bool hasTarget = false;
     private TilemapRestriction restrictionSystem;
-    private Unit currentTarget;
-    private bool canAttack = true;
+    private EnemyUnit currentEnemyTarget;
+
+    private float nextAttackTime = 0f;
+    private bool isPlayingAnimation = false;
 
     private float lastDamageTime = -999f;
     private Coroutine regenCoroutine;
 
+    private EnemyBuildingDestroyer buildingDestroyer;
+
+    private Coroutine currentAttackCoroutine;
+
+    private float lastEscapeCheck = 0f;
+    private bool isEscaping = false;
+    private Vector2 escapeDirection;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
+        rb.mass = 1f;
+        rb.drag = 5f;
+        rb.angularDrag = 5f;
         rb.gravityScale = 0;
+
+        spriteRenderer = GetComponent<SpriteRenderer>();
         spriteRenderer.color = normalColor;
         restrictionSystem = FindObjectOfType<TilemapRestriction>();
 
@@ -60,30 +84,43 @@ public class Unit : MonoBehaviour
         }
 
         DisableAllAnimationObjects();
+
+        buildingDestroyer = GetComponent<EnemyBuildingDestroyer>();
+        if (buildingDestroyer == null)
+            buildingDestroyer = gameObject.AddComponent<EnemyBuildingDestroyer>();
     }
 
     private void Update()
     {
         spriteRenderer.color = isSelected ? selectedColor : normalColor;
 
-        if (currentTarget == null && canAttack)
-        {
-            FindTarget();
-        }
+        CheckAndEscapeFromRestrictedTile();
 
-        if (currentTarget != null && canAttack)
+        FindNearestEnemy();
+
+        if (currentEnemyTarget != null && !isPlayingAnimation && !isEscaping && Time.time >= nextAttackTime)
         {
-            float distance = Vector2.Distance(transform.position, currentTarget.transform.position);
+            float distance = Vector2.Distance(transform.position, currentEnemyTarget.transform.position);
             if (distance <= attackRange)
             {
-                StartCoroutine(FullAttackCycle());
+                StartAttackEnemy();
+                rb.velocity = Vector2.zero;
+            }
+            else
+            {
+                MoveTo(currentEnemyTarget.transform.position);
             }
         }
     }
 
     private void FixedUpdate()
     {
-        if (hasTarget && canAttack)
+        if (isEscaping)
+        {
+            return;
+        }
+
+        if (hasTarget && !isPlayingAnimation)
         {
             Vector2 currentPos = rb.position;
             Vector2 direction = (targetPosition - currentPos).normalized;
@@ -95,32 +132,9 @@ public class Unit : MonoBehaviour
                 return;
             }
 
-            Collider2D[] hitColliders = Physics2D.OverlapCircleAll(nextPosition, 0.3f);
-            bool willPushOtherUnit = false;
-
-            foreach (Collider2D hit in hitColliders)
-            {
-                Unit otherUnit = hit.GetComponent<Unit>();
-                if (otherUnit != null && otherUnit != this)
-                {
-                    Vector2 otherNextPosition = otherUnit.transform.position + (Vector3)direction * moveSpeed * Time.fixedDeltaTime;
-                    if (restrictionSystem != null && !restrictionSystem.IsPositionWalkable(otherNextPosition))
-                    {
-                        willPushOtherUnit = true;
-                        break;
-                    }
-                }
-            }
-
-            if (willPushOtherUnit)
-            {
-                rb.velocity = Vector2.zero;
-                return;
-            }
-
             rb.velocity = direction * moveSpeed;
 
-            if (Vector2.Distance(currentPos, targetPosition) < 0.1f)
+            if (Vector2.Distance(currentPos, targetPosition) < 0.15f)
             {
                 rb.velocity = Vector2.zero;
                 hasTarget = false;
@@ -128,8 +142,79 @@ public class Unit : MonoBehaviour
         }
     }
 
+    private void CheckAndEscapeFromRestrictedTile()
+    {
+        if (Time.time - lastEscapeCheck < escapeCheckInterval) return;
+        lastEscapeCheck = Time.time;
+
+        if (restrictionSystem == null) return;
+
+        Vector2 currentPos = transform.position;
+
+        if (!restrictionSystem.IsPositionWalkable(currentPos))
+        {
+            if (!isEscaping)
+            {
+                Vector2 nearestWalkable = restrictionSystem.FindNearestWalkablePosition(currentPos);
+                escapeDirection = (nearestWalkable - currentPos).normalized;
+                isEscaping = true;
+
+                StopAllAttacks();
+                StopMoving();
+
+                StartCoroutine(StopEscaping());
+            }
+        }
+        else
+        {
+            isEscaping = false;
+        }
+    }
+
+    private IEnumerator StopEscaping()
+    {
+        float elapsed = 0f;
+        Vector2 initialVelocity = escapeDirection * escapeForce;
+
+        while (elapsed < escapeDuration)
+        {
+            float t = 1f - (elapsed / escapeDuration);
+            rb.velocity = initialVelocity * t;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        isEscaping = false;
+        rb.velocity = Vector2.zero;
+    }
+
+    private void FindNearestEnemy()
+    {
+        EnemyUnit[] enemies = FindObjectsOfType<EnemyUnit>();
+        float closestDistance = attackRange;
+        EnemyUnit closestEnemy = null;
+
+        foreach (EnemyUnit enemy in enemies)
+        {
+            if (enemy == null) continue;
+            float dist = Vector2.Distance(transform.position, enemy.transform.position);
+            if (dist < closestDistance)
+            {
+                closestDistance = dist;
+                closestEnemy = enemy;
+            }
+        }
+
+        currentEnemyTarget = closestEnemy;
+    }
+
     public void MoveTo(Vector2 position)
     {
+        if (isPlayingAnimation || isEscaping)
+        {
+            StopAllAttacks();
+        }
+
         if (restrictionSystem != null && !restrictionSystem.IsPositionWalkable(position))
         {
             position = restrictionSystem.FindNearestWalkablePosition(position);
@@ -139,58 +224,64 @@ public class Unit : MonoBehaviour
         hasTarget = true;
     }
 
-    private void FindTarget()
+    public void StopAllAttacks()
     {
-        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, attackRange);
-        float closestDistance = attackRange;
-        Unit closestUnit = null;
-
-        foreach (Collider2D collider in colliders)
+        if (currentAttackCoroutine != null)
         {
-            Unit unit = collider.GetComponent<Unit>();
-            if (unit != null && unit.unitTag != this.unitTag && unit.currentHealth > 0)
-            {
-                float distance = Vector2.Distance(transform.position, unit.transform.position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestUnit = unit;
-                }
-            }
+            StopCoroutine(currentAttackCoroutine);
+            currentAttackCoroutine = null;
         }
 
-        currentTarget = closestUnit;
+        isPlayingAnimation = false;
+
+        DisableAllAnimationObjects();
+        rb.velocity = Vector2.zero;
     }
 
-    private IEnumerator FullAttackCycle()
+    public void StopMoving()
     {
-        canAttack = false;
+        if (rb != null) rb.velocity = Vector2.zero;
+        hasTarget = false;
+    }
+
+    public GameObject[] GetAnimationObjects()
+    {
+        return attackAnimationObjects;
+    }
+
+    public void StartAttackEnemy()
+    {
+        if (currentAttackCoroutine != null) return;
+        currentAttackCoroutine = StartCoroutine(AttackEnemy());
+    }
+
+    private IEnumerator AttackEnemy()
+    {
+        isPlayingAnimation = true;
         rb.velocity = Vector2.zero;
+        StopMoving();
+
+        DisableAllAnimationObjects();
 
         for (int i = 0; i < attackAnimationObjects.Length; i++)
         {
             if (attackAnimationObjects[i] != null)
             {
                 attackAnimationObjects[i].SetActive(true);
-            }
-
-            yield return new WaitForSeconds(animationFrameDelay);
-
-            if (attackAnimationObjects[i] != null)
-            {
+                yield return new WaitForSeconds(animationFrameDelay);
                 attackAnimationObjects[i].SetActive(false);
             }
         }
 
-        if (currentTarget != null && currentTarget.currentHealth > 0)
+        if (currentEnemyTarget != null)
         {
-            currentTarget.TakeDamage(damage);
+            currentEnemyTarget.TakeDamage(damage);
         }
 
-        float cooldown = 1f / attackRate;
-        yield return new WaitForSeconds(cooldown);
+        isPlayingAnimation = false;
+        currentAttackCoroutine = null;
 
-        canAttack = true;
+        nextAttackTime = Time.time + attackCooldown;
     }
 
     private void DisableAllAnimationObjects()
@@ -269,9 +360,37 @@ public class Unit : MonoBehaviour
         Destroy(gameObject);
     }
 
+    public bool IsPlayingAnimation()
+    {
+        return isPlayingAnimation;
+    }
+
+    public float GetBuildingDestroyDelay()
+    {
+        return buildingDestroyDelay;
+    }
+
+    public int GetHitsToDestroy()
+    {
+        return hitsToDestroy;
+    }
+
+    public float GetBuildingDestroyRange()
+    {
+        return buildingDestroyRange;
+    }
+
+    public float GetMoveSpeed()
+    {
+        return moveSpeed;
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, buildingDestroyRange);
     }
 }

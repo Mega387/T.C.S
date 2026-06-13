@@ -7,6 +7,7 @@ TagManager:
   - Unit
   - PlayerUnit
   - UnitPlayer
+  - UnitEnemy
   layers:
   - Default
   - TransparentFX
@@ -14,8 +15,8 @@ TagManager:
   - 
   - Water
   - UI
-  - Unit
-  - 
+  - Units
+  - UnitsEnemy
   - 
   - 
   - 

@@ -69,6 +69,7 @@ public class BuildManager : MonoBehaviour
     private Building selectedBuilding;
     private Vector3Int currentCellPos;
     private bool isBuildingMode = false;
+    private bool isShiftPressed = false;
 
     void Update()
     {
@@ -85,6 +86,15 @@ public class BuildManager : MonoBehaviour
             {
                 CancelBuilding();
             }
+        }
+
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+        {
+            isShiftPressed = true;
+        }
+        else
+        {
+            isShiftPressed = false;
         }
     }
 
@@ -162,7 +172,6 @@ public class BuildManager : MonoBehaviour
 
         Tile groundTile = groundTilemap.GetTile<Tile>(position);
         Tile groundTwoTile = groundTwoTilemap.GetTile<Tile>(position);
-
 
         bool validGround = groundTile != null && selectedBuilding.allowedGroundTiles.Contains(groundTile);
         bool validGroundTwo = false;
@@ -265,7 +274,16 @@ public class BuildManager : MonoBehaviour
             {
                 SpendResources(selectedBuilding.cost);
                 StartConstruction(currentCellPos);
-                CancelBuilding();
+
+                if (!isShiftPressed)
+                {
+                    CancelBuilding();
+                }
+                else
+                {
+                    ClearPreview();
+                    currentCellPos = Vector3Int.zero;
+                }
             }
         }
     }

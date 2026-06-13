@@ -6,10 +6,11 @@ using UnityEngine.UIElements;
 
 public class TilemapGeneratorMap : MonoBehaviour
 {
-    [Header("сам тайл мап")]
+    [Header("тайл мапы")]
     [SerializeField] private Tilemap groundTilemap;
     [SerializeField] private Tilemap groundTwoMap;
     [SerializeField] private Tilemap BuildPlayer;
+    [SerializeField] private Tilemap EnemyTilemap;
 
     [Header("тайлы построек игрока")]
     [SerializeField] private TileBase king;
@@ -38,6 +39,15 @@ public class TilemapGeneratorMap : MonoBehaviour
     [Header("круглые тайл воды аниз лево")]
     [SerializeField] private TileBase waterGround4;
 
+    [Header("Нечесть")]
+    [Header("Логово")]
+    [SerializeField] private TileBase logovo;
+    [Header("Кладбище")]
+    [SerializeField] private TileBase cemetery;
+    [Header("Вулкан")]
+    [SerializeField] private TileBase volcanoOn;
+    [SerializeField] private TileBase volcanoOff;
+
     [Header("Размер карты")]
      private int cordX = 100;
      private int cordY = 80;
@@ -58,14 +68,144 @@ public class TilemapGeneratorMap : MonoBehaviour
         roundOffWater();
         generatorTree();
         country();
-
+        EnemyBuild();
     }
     static int Randomm(int ran, int nar)
     {
         int random = Random.Range(ran, nar);
         return random;
     }
+    void EnemyBuild()
+    {
+        int targetLogovoCount = Random.Range(6, 8);
+        int createdLogovoCount = 0;
+        int maxAttempts = 500;
+        int attempts = 0;
 
+        HashSet<Vector3Int> occupiedPositions = new HashSet<Vector3Int>();
+
+        while (createdLogovoCount < targetLogovoCount && attempts < maxAttempts)
+        {
+            attempts++;
+
+            int randomX = Random.Range(20, 76);
+            int randomY = Random.Range(20, 76);
+            Vector3Int centerPos = new Vector3Int(randomX, randomY, 0);
+
+            if (occupiedPositions.Contains(centerPos))
+                continue;
+
+            bool isAllow = groundTilemap.GetTile(centerPos) == groundTile &&
+                          !groundTwoMap.HasTile(centerPos) &&
+                          !BuildPlayer.HasTile(centerPos) &&
+                          groundTilemap.GetTile(centerPos) != waterTile &&
+                          groundTilemap.GetTile(centerPos) != waterGround1 &&
+                          groundTilemap.GetTile(centerPos) != waterGround2 &&
+                          groundTilemap.GetTile(centerPos) != waterGround3 &&
+                          groundTilemap.GetTile(centerPos) != waterGround4 &&
+                          groundTwoMap.GetTile(centerPos) != treeN1 &&
+                          groundTwoMap.GetTile(centerPos) != treeN2;
+
+            bool NoKingInRadius(int centerX, int centerY, int radius = 12)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    for (int y = -radius; y <= radius; y++)
+                    {
+                        Vector3Int checkPos = new Vector3Int(centerX + x, centerY + y, 0);
+                        if (BuildPlayer.GetTile(checkPos) == king)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            if (isAllow && NoKingInRadius(randomX, randomY))
+            {
+                // Устанавливаем логово
+                EnemyTilemap.SetTile(centerPos, logovo);
+                occupiedPositions.Add(centerPos);
+                createdLogovoCount++;
+
+                // Определяем размер логова (1-3 для разнообразия)
+                int randomComplexity = Random.Range(1, 4);
+                int buildingsToAdd = 0;
+
+                if (randomComplexity == 1) buildingsToAdd = 3;      // Маленькое
+                else if (randomComplexity == 2) buildingsToAdd = 5;  // Среднее
+                else buildingsToAdd = 7;                             // Большое
+
+                int addedBuildings = 0;
+                int buildingAttempts = 0;
+                int maxBuildingAttempts = 100;
+
+                while (addedBuildings < buildingsToAdd && buildingAttempts < maxBuildingAttempts)
+                {
+                    buildingAttempts++;
+
+                    int offsetX = Random.Range(-2, 3);
+                    int offsetY = Random.Range(-2, 3);
+
+                    if (offsetX == 0 && offsetY == 0) continue;
+
+                    int newX = randomX + offsetX;
+                    int newY = randomY + offsetY;
+                    Vector3Int buildPos = new Vector3Int(newX, newY, 0);
+                    if (occupiedPositions.Contains(buildPos))
+                        continue;
+
+                    bool isAllowPosition = newX >= 10 && newX <= cordX - 10 && newY >= 10 && newY <= cordY - 10 &&
+                                           groundTilemap.GetTile(buildPos) == groundTile &&
+                                           !groundTwoMap.HasTile(buildPos) &&
+                                           !BuildPlayer.HasTile(buildPos) &&
+                                           groundTilemap.GetTile(buildPos) != waterTile &&
+                                           groundTilemap.GetTile(buildPos) != waterGround1 &&
+                                           groundTilemap.GetTile(buildPos) != waterGround2 &&
+                                           groundTilemap.GetTile(buildPos) != waterGround3 &&
+                                           groundTilemap.GetTile(buildPos) != waterGround4 &&
+                                           groundTwoMap.GetTile(buildPos) != treeN1 &&
+                                           groundTwoMap.GetTile(buildPos) != treeN2;
+
+                    if (isAllowPosition)
+                    {
+                        int randomBuild = Random.Range(0, 10);
+
+                        if (randomBuild <= 2) // 30% шанс на дополнительное логово
+                        {
+                            if (createdLogovoCount < targetLogovoCount)
+                            {
+                                EnemyTilemap.SetTile(buildPos, logovo);
+                                occupiedPositions.Add(buildPos);
+                                createdLogovoCount++;
+                                addedBuildings++;
+                            }
+                        }
+                        else if (randomBuild <= 5) // 30% шанс на кладбище
+                        {
+                            EnemyTilemap.SetTile(buildPos, cemetery);
+                            occupiedPositions.Add(buildPos);
+                            addedBuildings++;
+                        }
+                        else // 40% шанс на вулкан
+                        {
+                            EnemyTilemap.SetTile(buildPos, volcanoOff);
+                            occupiedPositions.Add(buildPos);
+                            addedBuildings++;
+                        }
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"Создано логовов: {createdLogovoCount} из целевых {targetLogovoCount}");
+
+        if (createdLogovoCount < targetLogovoCount)
+        {
+            Debug.LogWarning($"Не удалось создать все логова. Создано {createdLogovoCount} из {targetLogovoCount}");
+        }
+    }
 
     void country()
     {

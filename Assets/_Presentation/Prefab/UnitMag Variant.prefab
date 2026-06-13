@@ -718,7 +718,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7466513913185030007, guid: ea4f838ac633e4f4d818298ca488805e, type: 3}
       propertyPath: attackCooldown
-      value: 7
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 7466513913185030007, guid: ea4f838ac633e4f4d818298ca488805e, type: 3}
       propertyPath: animationFrameDelay

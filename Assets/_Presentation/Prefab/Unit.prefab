@@ -467,22 +467,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   unitTag: UnitPlayer
-  damage: 10
-  attackCooldown: 2.3
-  attackRange: 0.45
+  damage: 15
+  attackCooldown: 2
+  attackRange: 0.6
   attackAnimationObjects:
   - {fileID: 476707303650865815}
   - {fileID: 391025210985503894}
   - {fileID: 463151484843088173}
   animationFrameDelay: 0.15
-  moveSpeed: 2
   regenDelay: 20
   regenAmount: 10
   regenInterval: 10
+  moveSpeed: 2
   selectedColor: {r: 0.76186323, g: 1, b: 0.6745283, a: 1}
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   healthBar: {fileID: 107191680784417504}
+  buildingDestroyRange: 1.2
+  buildingDestroyDelay: 2
+  hitsToDestroy: 5
   isSelected: 0
+  rb: {fileID: 0}
 --- !u!50 &5003714497468686227
 Rigidbody2D:
   serializedVersion: 4
@@ -496,8 +500,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDrag: 5
+  m_AngularDrag: 5
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
