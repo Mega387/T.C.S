@@ -66,6 +66,12 @@ public class EnemyUnit : MonoBehaviour
     private float minDistanceToBuilding = float.MaxValue;
     private Vector3Int nearestBuildingCell;
 
+    private float stuckToUnitTimer = 0f;
+    private Vector3 lastUnitPosition;
+
+    private float stuckToBuildingTimer = 0f;
+    private Vector3 lastBuildingTargetPos;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -95,6 +101,12 @@ public class EnemyUnit : MonoBehaviour
         StartCoroutine(FindTargetRoutine());
 
         lastPosition = transform.position;
+
+        FindNearestBuildingTile();
+        if (nearestBuildingCell != Vector3Int.zero)
+        {
+            SetBuildingTarget(nearestBuildingCell);
+        }
     }
 
     private void FindKingPositionOnce()
@@ -122,23 +134,63 @@ public class EnemyUnit : MonoBehaviour
     private void Update()
     {
         CheckIfStuck();
+        CheckIfStuckToUnit();
+        CheckIfStuckToBuilding();
 
         if (isAttacking) return;
 
         FindNearestBuildingTile();
-
         FindNearestPlayerUnit();
 
         float distanceToUnit = playerUnitTarget != null ? Vector2.Distance(transform.position, playerUnitTarget.transform.position) : float.MaxValue;
         float distanceToBuilding = minDistanceToBuilding;
 
-        if (nearestBuildingCell != Vector3Int.zero && distanceToBuilding < distanceToUnit)
+        bool isStuckToUnit = (playerUnitTarget != null && stuckToUnitTimer > 1.5f);
+        bool isStuckToBuildingTarget = (isAttackingBuilding && stuckToBuildingTimer > 2f);
+
+        if (isStuckToBuildingTarget)
         {
-            if (isMovingToUnit)
+            currentPath.Clear();
+            stuckToBuildingTimer = 0f;
+            FindBestTarget();
+            return;
+        }
+
+        if (playerUnitTarget != null && distanceToUnit <= attackRangeUnit + 1f && !isStuckToUnit)
+        {
+            isMovingToUnit = true;
+            isAttackingBuilding = false;
+
+            if (distanceToUnit <= attackRangeUnit)
+            {
+                rb.velocity = Vector2.zero;
+                if (Time.time >= nextUnitAttackTime)
+                {
+                    StartCoroutine(AttackUnit());
+                }
+            }
+            else
+            {
+                MoveToUnit();
+            }
+            return;
+        }
+
+        if (isStuckToUnit)
+        {
+            if (nearestBuildingCell != Vector3Int.zero)
             {
                 isMovingToUnit = false;
+                if (!isAttackingBuilding || currentBuildingTargetCell != nearestBuildingCell)
+                {
+                    SetBuildingTarget(nearestBuildingCell);
+                    stuckToUnitTimer = 0f;
+                }
             }
+        }
 
+        if (nearestBuildingCell != Vector3Int.zero && !isMovingToUnit)
+        {
             if (!isAttackingBuilding || currentBuildingTargetCell != nearestBuildingCell)
             {
                 SetBuildingTarget(nearestBuildingCell);
@@ -172,54 +224,50 @@ public class EnemyUnit : MonoBehaviour
             return;
         }
 
-        if (playerUnitTarget != null && playerUnitTarget.gameObject.activeSelf)
+        if (playerUnitTarget != null)
         {
             isMovingToUnit = true;
-            float distance = Vector2.Distance(transform.position, playerUnitTarget.transform.position);
-
-            if (distance <= attackRangeUnit)
-            {
-                rb.velocity = Vector2.zero;
-                if (Time.time >= nextUnitAttackTime)
-                {
-                    StartCoroutine(AttackUnit());
-                }
-            }
-            else
-            {
-                MoveToUnit();
-            }
+            MoveToUnit();
             return;
         }
 
-        isMovingToUnit = false;
-
-        if (isAttackingBuilding && currentBuildingTargetCell != null && buildingsTilemap != null)
+        if (isAttackingBuilding && currentBuildingTargetCell != null)
         {
-            if (buildingsTilemap.GetTile(currentBuildingTargetCell) == null)
-            {
-                isAttackingBuilding = false;
-                currentPath.Clear();
-                FindBestTarget();
-                return;
-            }
-
-            float distance = Vector2.Distance(transform.position, currentBuildingTargetPos);
-
-            if (distance <= attackRangeBuilding)
-            {
-                rb.velocity = Vector2.zero;
-
-                if (Time.time - lastBuildingAttackTime >= buildingAttackDelay)
-                {
-                    StartCoroutine(AttackBuilding());
-                }
-            }
-            else
-            {
-                MoveAlongPath();
-            }
+            MoveAlongPath();
         }
+    }
+
+    private void CheckIfStuckToBuilding()
+    {
+        if (!isAttackingBuilding || currentBuildingTargetCell == null)
+        {
+            stuckToBuildingTimer = 0f;
+            return;
+        }
+
+        Vector2 currentPos = transform.position;
+        Vector2 targetPos = currentBuildingTargetPos;
+
+        float distanceToTarget = Vector2.Distance(currentPos, targetPos);
+
+        if (distanceToTarget <= attackRangeBuilding)
+        {
+            stuckToBuildingTimer = 0f;
+            return;
+        }
+
+        float movedDistance = Vector2.Distance(lastBuildingTargetPos, currentPos);
+
+        if (movedDistance < 0.05f)
+        {
+            stuckToBuildingTimer += Time.deltaTime;
+        }
+        else
+        {
+            stuckToBuildingTimer = 0f;
+        }
+
+        lastBuildingTargetPos = currentPos;
     }
 
     private void FixedUpdate()
@@ -305,6 +353,41 @@ public class EnemyUnit : MonoBehaviour
         }
 
         lastPosition = currentPos;
+    }
+
+    private void CheckIfStuckToUnit()
+    {
+        if (playerUnitTarget == null)
+        {
+            stuckToUnitTimer = 0f;
+            return;
+        }
+
+        if (!isMovingToUnit)
+        {
+            stuckToUnitTimer = 0f;
+            return;
+        }
+
+        float distanceToUnit = Vector2.Distance(transform.position, playerUnitTarget.transform.position);
+
+        if (distanceToUnit <= attackRangeUnit)
+        {
+            stuckToUnitTimer = 0f;
+            return;
+        }
+
+        float enemyMovement = Vector2.Distance(lastPosition, transform.position);
+
+        if (enemyMovement < 0.05f && distanceToUnit > attackRangeUnit)
+        {
+            stuckToUnitTimer += Time.deltaTime;
+        }
+        else if (enemyMovement > 0.05f)
+        {
+            stuckToUnitTimer -= Time.deltaTime;
+            stuckToUnitTimer = Mathf.Max(0, stuckToUnitTimer);
+        }
     }
 
     private void MoveAlongPath()
@@ -456,16 +539,25 @@ public class EnemyUnit : MonoBehaviour
         float distanceToUnit = playerUnitTarget != null ? Vector2.Distance(transform.position, playerUnitTarget.transform.position) : float.MaxValue;
         float distanceToBuilding = minDistanceToBuilding;
 
-        if (nearestBuildingCell != Vector3Int.zero && distanceToBuilding < distanceToUnit)
-        {
-            SetBuildingTarget(nearestBuildingCell);
-        }
-        else if (playerUnitTarget != null)
+        if (playerUnitTarget != null && distanceToUnit <= attackRangeUnit + 1f)
         {
             isAttackingBuilding = false;
-            playerUnitTarget = playerUnitTarget;
+            return;
         }
-        else if (buildingsTilemap != null)
+
+        if (nearestBuildingCell != Vector3Int.zero)
+        {
+            SetBuildingTarget(nearestBuildingCell);
+            return;
+        }
+
+        if (playerUnitTarget != null)
+        {
+            isAttackingBuilding = false;
+            return;
+        }
+
+        if (buildingsTilemap != null)
         {
             if (kingPositionFound)
             {
@@ -620,14 +712,15 @@ public class EnemyUnit : MonoBehaviour
 
     private void SetBuildingTarget(Vector3Int cell)
     {
-        if (currentBuildingTargetCell == cell) return;
+        if (currentBuildingTargetCell == cell && isAttackingBuilding) return;
 
         currentBuildingTargetCell = cell;
         currentBuildingTargetPos = buildingsTilemap.CellToWorld(cell) + new Vector3(0.5f, 0.5f, 0);
         isAttackingBuilding = true;
-        playerUnitTarget = null;
         isMovingToUnit = false;
         currentPath.Clear();
+        stuckToUnitTimer = 0f;
+        stuckToBuildingTimer = 0f;
 
         UpdatePathToTarget();
     }

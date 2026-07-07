@@ -2,22 +2,20 @@ using UnityEngine;
 
 public class LogovoEnemyLink : MonoBehaviour
 {
-    private LogovoSpawner.LogovoState logovoState;
+    private LogovoSpawner.LogovoState logovo;
     private LogovoSpawner spawner;
-    private bool isInitialized = false;
 
-    public void Initialize(LogovoSpawner.LogovoState logovo, LogovoSpawner spawnerScript)
+    public void Initialize(LogovoSpawner.LogovoState logovoState, LogovoSpawner logovoSpawner)
     {
-        logovoState = logovo;
-        spawner = spawnerScript;
-        isInitialized = true;
+        logovo = logovoState;
+        spawner = logovoSpawner;
     }
 
     private void OnDestroy()
     {
-        if (isInitialized && spawner != null && logovoState != null)
+        if (spawner != null && logovo != null)
         {
-            spawner.RemoveEnemyFromLogovo(logovoState, gameObject);
+            spawner.OnEnemyDied(logovo, gameObject);
         }
     }
 }

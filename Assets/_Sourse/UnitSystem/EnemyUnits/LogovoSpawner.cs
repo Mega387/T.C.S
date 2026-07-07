@@ -14,7 +14,7 @@ public class LogovoSpawner : MonoBehaviour
 
     [Header("Настройки спавна")]
     [SerializeField] private float spawnRadius = 2f;
-    [SerializeField] private float spawnCooldown = 30f;
+    [SerializeField] private float spawnCooldown = 10f;
 
     [Header("Визуализация")]
     [SerializeField] private bool showDebugRadius = true;
@@ -46,30 +46,28 @@ public class LogovoSpawner : MonoBehaviour
     private float lastCheckTime = 0f;
     private float refreshLogovosTimer = 0f;
     private float refreshInterval = 2f;
-    private int findPlayerAttempts = 0;
 
     private void Start()
     {
-        StartCoroutine(FindPlayerRepeatedly());
+        StartCoroutine(FindPlayerContinuously());
         StartCoroutine(WaitAndFindLogovos());
     }
 
-    private IEnumerator FindPlayerRepeatedly()
+    private IEnumerator FindPlayerContinuously()
     {
-        while (playerTransform == null && findPlayerAttempts < 30)
+        while (true)
         {
-            FindPlayer();
-            findPlayerAttempts++;
-            yield return new WaitForSeconds(0.5f);
-        }
+            if (playerTransform == null)
+            {
+                FindPlayer();
+            }
 
-        if (playerTransform != null)
-        {
-            Debug.Log($"LogovoSpawner: Игрок найден - {playerTransform.name}");
-        }
-        else
-        {
-            Debug.LogError("LogovoSpawner: Игрок не найден после 15 секунд!");
+            if (playerTransform != null)
+            {
+                Debug.Log($"LogovoSpawner: Игрок найден - {playerTransform.name}");
+            }
+
+            yield return new WaitForSeconds(1f);
         }
     }
 
@@ -180,6 +178,7 @@ public class LogovoSpawner : MonoBehaviour
 
             if (enemyTilemap.GetTile(cell) != logovoTile)
             {
+                Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} удалено (тайл изменился)");
                 toRemove.Add(cell);
                 continue;
             }
@@ -191,15 +190,30 @@ public class LogovoSpawner : MonoBehaviour
                 continue;
             }
 
-            if (Time.time - logovo.lastSpawnTime < spawnCooldown)
+            float timeSinceLastSpawn = Time.time - logovo.lastSpawnTime;
+
+            if (logovo.lastSpawnTime < 0)
+            {
+                timeSinceLastSpawn = spawnCooldown + 1;
+            }
+
+            bool cooldownReady = timeSinceLastSpawn >= spawnCooldown;
+
+            if (logovo.activeEnemies.Count > 0)
             {
                 continue;
             }
 
-            float distance = Vector3.Distance(playerTransform.position, logovo.worldPosition);
-
-            if (distance <= spawnRadius)
+            if (!cooldownReady)
             {
+                continue;
+            }
+
+            float currentDistance = Vector3.Distance(playerTransform.position, logovo.worldPosition);
+
+            if (currentDistance <= spawnRadius)
+            {
+                Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} - ЗАПУСКАЕМ СПАВН!");
                 StartCoroutine(SpawnAllEnemiesCoroutine(logovo));
             }
         }
@@ -212,7 +226,13 @@ public class LogovoSpawner : MonoBehaviour
 
     private IEnumerator SpawnAllEnemiesCoroutine(LogovoState logovo)
     {
+        if (logovo.isSpawningNow)
+        {
+            yield break;
+        }
+
         logovo.isSpawningNow = true;
+        Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} - НАЧАЛО СПАВНА");
 
         if (enemyPrefabs == null || enemyPrefabs.Count == 0)
         {
@@ -222,9 +242,7 @@ public class LogovoSpawner : MonoBehaviour
         }
 
         int enemiesToSpawn = enemyPrefabs.Count;
-        float distanceToPlayer = Vector3.Distance(playerTransform.position, logovo.worldPosition);
-
-        Debug.Log($"LogovoSpawner: 🦇 СПАВН из логова {logovo.worldPosition}! Игрок на расстоянии {distanceToPlayer:F2}. Врагов: {enemiesToSpawn}");
+        Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} - СПАВН {enemiesToSpawn} врагов");
 
         for (int i = 0; i < enemiesToSpawn; i++)
         {
@@ -232,6 +250,7 @@ public class LogovoSpawner : MonoBehaviour
             Vector3 spawnPosition = GetSpawnPositionAroundLogovo(logovo.worldPosition, i);
 
             GameObject newEnemy = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+            Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} - заспавнен враг {i + 1}/{enemiesToSpawn}");
 
             logovo.activeEnemies.Add(newEnemy);
             logovo.spawnedEnemiesCount++;
@@ -249,7 +268,7 @@ public class LogovoSpawner : MonoBehaviour
         logovo.lastSpawnTime = Time.time;
         logovo.isSpawningNow = false;
 
-        Debug.Log($"LogovoSpawner: ✅ Логово {logovo.worldPosition} заспавнило {enemiesToSpawn} врагов. Следующий спавн через {spawnCooldown} сек");
+        Debug.Log($"LogovoSpawner: Логово {logovo.worldPosition} - ЗАВЕРШИЛО СПАВН. Следующий спавн через {spawnCooldown} сек");
     }
 
     private Vector3 GetSpawnPositionAroundLogovo(Vector3 logovoWorldPos, int index)
@@ -269,6 +288,11 @@ public class LogovoSpawner : MonoBehaviour
         {
             logovo.activeEnemies.Remove(enemy);
         }
+    }
+
+    public void OnEnemyDied(LogovoState logovo, GameObject enemy)
+    {
+        RemoveEnemyFromLogovo(logovo, enemy);
     }
 
     public void RefreshLogovos()

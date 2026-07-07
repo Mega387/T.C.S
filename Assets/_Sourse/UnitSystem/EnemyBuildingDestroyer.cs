@@ -16,6 +16,11 @@ public class EnemyBuildingDestroyer : MonoBehaviour
     void Start()
     {
         unit = GetComponent<Unit>();
+        if (unit == null)
+        {
+            Debug.LogError("EnemyBuildingDestroyer: Unit компонент не найден!");
+            return;
+        }
         FindTilemap();
     }
 
@@ -25,11 +30,17 @@ public class EnemyBuildingDestroyer : MonoBehaviour
         if (obj != null)
         {
             enemyTilemap = obj.GetComponent<Tilemap>();
+            Debug.Log("EnemyBuildingDestroyer: EnemyTilemap найден");
+        }
+        else
+        {
+            Debug.LogWarning("EnemyBuildingDestroyer: EnemyTilemap НЕ НАЙДЕН!");
         }
     }
 
     void Update()
     {
+        if (unit == null) return;
         if (enemyTilemap == null) return;
         if (isAttacking) return;
         if (unit.IsPlayingAnimation()) return;
@@ -54,6 +65,8 @@ public class EnemyBuildingDestroyer : MonoBehaviour
 
     void FindNearestBuilding()
     {
+        if (enemyTilemap == null) return;
+
         BoundsInt bounds = enemyTilemap.cellBounds;
         float bestDist = unit.GetBuildingDestroyRange();
         Vector3Int bestCell = Vector3Int.zero;

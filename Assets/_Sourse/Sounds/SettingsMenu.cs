@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class SettingsMenu : MonoBehaviour
 {
@@ -16,6 +17,22 @@ public class SettingsMenu : MonoBehaviour
     private float lastEscapeTime = -999f;
     private bool waitingForDoublePress = false;
     private float doublePressDelay = 2f;
+
+    private static SettingsMenu instance;
+
+    void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
 
     void Start()
     {
@@ -35,6 +52,32 @@ public class SettingsMenu : MonoBehaviour
         }
 
         LoadAllSettings();
+
+        if (pauseMenuPanel != null)
+        {
+            pauseMenuPanel.SetActive(false);
+        }
+
+        Time.timeScale = 1f;
+        isPaused = false;
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (isPaused)
+        {
+            ResumeGame();
+        }
+
+        Time.timeScale = 1f;
+        isPaused = false;
 
         if (pauseMenuPanel != null)
         {
@@ -112,15 +155,30 @@ public class SettingsMenu : MonoBehaviour
     void PauseGame()
     {
         isPaused = true;
-        pauseMenuPanel.SetActive(true);
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(true);
         Time.timeScale = 0f;
     }
 
     public void ResumeGame()
     {
         isPaused = false;
-        pauseMenuPanel.SetActive(false);
+        if (pauseMenuPanel != null)
+            pauseMenuPanel.SetActive(false);
         Time.timeScale = 1f;
+    }
+
+    public void ExitGame()
+    {
+        ResumeGame();
+
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void QuitGame()
+    {
+        ResumeGame();
+        Application.Quit();
     }
 
     public void OnResolutionChanged(int index)

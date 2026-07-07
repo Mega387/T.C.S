@@ -291,6 +291,7 @@ public class BuildManager : MonoBehaviour
     void StartConstruction(Vector3Int position)
     {
         buildTilemap.SetTile(position, selectedBuilding.constructionTiles[0]);
+        activeConstructions.Add(position, selectedBuilding);
         StartCoroutine(ConstructionProgress(position, selectedBuilding));
     }
 
@@ -302,6 +303,15 @@ public class BuildManager : MonoBehaviour
         {
             yield return new WaitForSeconds(timePerStage);
 
+            if (!buildTilemap.HasTile(position))
+            {
+                if (activeConstructions.ContainsKey(position))
+                {
+                    activeConstructions.Remove(position);
+                }
+                yield break;
+            }
+
             if (buildTilemap != null && buildingData != null && buildingData.constructionTiles.Count > stage)
             {
                 buildTilemap.SetTile(position, buildingData.constructionTiles[stage]);
@@ -309,15 +319,22 @@ public class BuildManager : MonoBehaviour
             else
             {
                 yield break;
-
             }
         }
 
         yield return new WaitForSeconds(timePerStage);
 
+        if (!buildTilemap.HasTile(position))
+        {
+            if (activeConstructions.ContainsKey(position))
+            {
+                activeConstructions.Remove(position);
+            }
+            yield break;
+        }
+
         if (buildTilemap != null && buildingData != null && buildingData.buildingTile != null)
         {
-
             buildTilemap.SetTile(position, buildingData.buildingTile);
             FixBuildTile fixs = FindObjectOfType<FixBuildTile>();
 
